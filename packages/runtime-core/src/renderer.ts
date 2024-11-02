@@ -84,6 +84,7 @@ export function createRender(renderOptions) {
         }
     }
 
+    // 将所有属性取出来对比
     function patchProps(oldProps, newProps, el) {
         for (let key in newProps) {
             hostPatchProp(el, key, oldProps[key], newProps[key])
@@ -103,6 +104,12 @@ export function createRender(renderOptions) {
 
     }
 
+    function patchBlockChildren(n1, n2) {
+        for (let i = 0; i < n2.dynamicChildren; ++i) {
+            patchElement(n1.dynamicChildren[i], n2.dynamicChildren[i])
+        }
+    }
+
     // 先复用节点，再比较属性，再比较儿子
     function patchElement(n1, n2) {
         // 1. 复用节点
@@ -111,9 +118,22 @@ export function createRender(renderOptions) {
         let oldProps = n1.props || {}
         let newProps = n2.props || {}
         // 对比更改el的属性
-        patchProps(oldProps, newProps, el)
+        let { patchFlag } = n2
+        if (patchFlag & PatchFlags.CLASS) {
+            if (oldProps.class !== newProps.class) {
+                hostPatchProp(el, 'class', null, newProps.class)
+            }
+        } else {
+            patchProps(oldProps, newProps, el)
+        }
         // 3. 比较孩子
-        patchChildren(n1, n2, el)
+        // 直接比较动态节点
+        if (n2.dynamicChildren) {
+            patchBlockChildren(n1, n2)
+        } else {
+            // 全量对比
+            patchChildren(n1, n2, el)
+        }
     }
 
     function processElement(n1, n2, container) {

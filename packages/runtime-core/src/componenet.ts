@@ -1,8 +1,14 @@
-import { isFunction, isObject } from "lodash";
+import { isFunction, isNull, isObject } from "lodash";
 import { initProps } from './componentProps';
 import { hasOwnProperty } from '.';
 import { queueJob } from './../../runtime-dom/node_modules/@liuyu_vue/runtime-core/src/scheduler';
 import { proxyRefs } from './../../reactivity/src/ref';
+import { ShapeFlags } from '@my_vue/shared/src';
+import { invokeArrayFns } from "../../shared/src";
+
+export let currentInstance = null
+export const setCurrentInstance = (instance) => currentInstance = instance
+export const getCurrentInstance = () => currentInstance
 
 export function createComponentInstance(vnode) {
     // vue3创建组件实例来挂载，要保存信息
@@ -18,13 +24,15 @@ export function createComponentInstance(vnode) {
         attrs: {}, //普通的属性，比如dataset-uid
         proxy: null,
         render: null,
-        setupState: {} // setup的返回值
+        setupState: {}, // setup的返回值
+        slots: {} // 插槽
     }
     return instance
 }
 
 const publicProperty = {
-    $attrs: (i) => i.attrs
+    $attrs: (i) => i.attrs,
+    $slots: (i) => i.slots
 }
 
 const publicInstanceProxy = {
@@ -62,9 +70,16 @@ const publicInstanceProxy = {
     }
 }
 
+function initSlots(instance, children) {
+    if (instance.vnode.shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
+        instance.slots = children
+    }
+}
+
 export function setupComponent(instance) {
-    let { props, type } = instance.vnode
+    let { props, type, children } = instance.vnode
     initProps(instance, props)
+    initSlots(instance, children)
     // 这一行代码省略，不懂
     instance.proxy = new Proxy(instance, publicInstanceProxy)
     // 我们写的组件对象被传递给vnode.type，因为我们一般使用是
@@ -77,7 +92,11 @@ export function setupComponent(instance) {
     let setup = type.setup
     if (setup) {
         const setupContext = {}
+        // 设置全局的instance实例为当前的instance
+        setCurrentInstance(instance)
+        // 执行setup内的逻辑
         const setupResult = setup(instance.props, setupContext)
+        setCurrentInstance(null)
         // setup返回函数代表返回的是render函数
         if (isFunction(setupResult)) {
             instance.render = setupResult
@@ -103,14 +122,23 @@ export function setupRenderEffect(instance, container, anchor) {
     function componentUpdateFn() {
         // 初始化
         if (!instance.isMounted) {
+            // 解构出onBeforeMount和onMounted执行
+            let { bm, m } = instance
+            if (bm) {
+                invokeArrayFns(bm)
+            }
             const subTree = render.call(data)
             // 挂载subTree
             patch(null, subTree, container, anchor)
             instance.subTree = subTree
             instance.isMounted = true
+            // 执行onMounted
+            if (m) {
+                invokeArrayFns(m)
+            }
         } else {
             // next为最新的数据，
-            let { next } = instance
+            let { next, bu, u } = instance
             if (next) {
                 // 更新前拿到最新的属性来修改保存props，
                 // 再让后面render可以拿到最新的props,
@@ -124,10 +152,16 @@ export function setupRenderEffect(instance, container, anchor) {
             }
             // 组件内部更新，组件更新必须是异步的
             // render函数返回vnode
+            if (bu) {
+                invokeArrayFns(bu)
+            }
             const subTree = render.call(data)
             // 渲染container的内容，将新的subTree  (也是vnode)挂载
             patch(instance.subTree, subTree, container, anchor)
             instance.subTree = subTree
+            if (u) {
+                invokeArrayFns(u)
+            }
         }
     }
     const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(instance.update))

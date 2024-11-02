@@ -30,3 +30,9 @@ export const enum ShapeFlags {
     COMPONENT = ShapeFlags.STATEFUL_COMPONENT | ShapeFlags.FUNCTION_COMPONENT
 }
 export const hasOwnProperty =(val,key)=> Object.prototype.hasOwnProperty.call(val,key)
+
+export function invokeArrayFns = (fns){
+    for(let i=0;i<fns.length;++i){
+        fns[i]()
+    }
+}
