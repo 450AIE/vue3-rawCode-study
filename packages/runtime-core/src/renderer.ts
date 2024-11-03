@@ -6,6 +6,7 @@ import { reactive } from "vue"
 import { ReactiveEffect } from "@my_vue/reactivity/src/effect"
 import { hasOwnProperty } from "."
 import { createComponentInstance, setupComponent, setupRenderEffect } from "./componenet"
+import { isKeepAlive } from "./components/KeepAlive"
 export const Text = Symbol('Text')
 export const Fragment = Symbol('Fragment')
 
@@ -186,6 +187,16 @@ export function createRender(renderOptions) {
     function mountComponent(vnode, container, anchor) {
         // 1
         let instance = vnode.component = createComponentInstance(vnode)
+        // 判断该组件是否被kepp-alive
+        if(isKeepAlive(vnode)){
+            instance.ctx.renderer = {
+                createElement:hostCreateElement,
+                move(vnode,container){
+                    // 将另一个缓存组件的切换进来
+                    hostInsert(vnode.component.subTree.el,container)
+                }
+            }
+        }
         // 2
         setupComponent(instance)
         // 3
@@ -194,6 +205,9 @@ export function createRender(renderOptions) {
 
     function processComponent(n1, n2, container, anchor) {
         if (n1 == null) {
+            if(n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE){
+                parentComponent.ctx.activate(n2,container)
+            }
             // 初次挂载
             mountComponent(n2, container, anchor)
         } else {
@@ -208,7 +222,7 @@ export function createRender(renderOptions) {
         if (n1 === n2) return
         // 如果n1和n2不是一个东西，直接替换
         if (n1 && !isSameVnode(n1, n2)) {
-            unmount(n1)
+            unmount(n1,parentComponent)
             // n1设置为null就会走下面的初次挂载逻辑
             n1 = null
         }
@@ -241,7 +255,14 @@ export function createRender(renderOptions) {
         }
     }
     // 卸载的可能是组件，文本等等
-    function unmount(vnode) {
+    function unmount(vnode,parentComponent) {
+        if(vnode.type === Fragment){
+            return unmountChildren(vnode)
+        }else if(vnode.shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE){
+            parentComponent.ctx.deactivate(vnode)
+        }else if(vnode.shapeFlag & ShapeFlags.COMPONENT){
+            return unmountChildren(vnode.component.subTree,null)
+        }
         hostRemove(vnode.el)
     }
 

@@ -7,8 +7,8 @@ export function defineAsyncComponent(options) {
     }
     return {
         setup() {
-            // 
-            const { loader, timeout, loading, delay,loadingComponent,onError } = options
+            const { loader, timeout, loading, delay,loadingComponent,onError,errorComponent } = options
+            // 标记状态
             const error = ref(false)
             const loaded = ref(false)
             const loading = ref(false)
@@ -18,13 +18,14 @@ export function defineAsyncComponent(options) {
                     loading = true
                 }, delay)
             }
+            // 保存请求成功后的组件
             let Comp = null
-
             function load(){
                 // 如果异步加载组件失败，且传递了onError，就执行
                 return loader().catch(err=>{
                     if(onError){
                         return new Promise((resolve,reject)=>{
+                            // 执行retry就重新执行loader函数
                             const retry = ()=>resolve(load())
                             const fail = ()=>reject(err)
                             onError(err,retry,fail)
@@ -55,7 +56,7 @@ export function defineAsyncComponent(options) {
                     }else if(loading.value){
                         return h(loadingComponent)
                     }
-                    // 渲染返回结果前，先渲染空
+                    // 没传递loading组件和err组件，先渲染空
                     return h(Fragment, [])
                 }
             }

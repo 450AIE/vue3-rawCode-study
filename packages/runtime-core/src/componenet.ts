@@ -13,6 +13,7 @@ export const getCurrentInstance = () => currentInstance
 export function createComponentInstance(vnode) {
     // vue3创建组件实例来挂载，要保存信息
     const instance = {
+        ctx:{}, // keepAlive的组件在这里添加上下文
         provides:parent ? parent.provides : null //挂载的父亲的provide传递的数据
         parent,
         data: null,
