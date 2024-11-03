@@ -13,6 +13,8 @@ export const getCurrentInstance = () => currentInstance
 export function createComponentInstance(vnode) {
     // vue3创建组件实例来挂载，要保存信息
     const instance = {
+        provides:parent ? parent.provides : null //挂载的父亲的provide传递的数据
+        parent,
         data: null,
         vnode,  // 组件本身的vnode，保存组件的各种信息
         subTree: null, // 组件要渲染的内容，也是vnode，渲染的时候

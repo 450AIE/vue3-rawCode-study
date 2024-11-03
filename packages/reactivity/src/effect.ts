@@ -1,3 +1,5 @@
+import { recordEffectScope } from "./effectScope"
+
 // 当前活跃的effect，用来收集依赖，类似vue2的全局Dep
 export let activeEffect = undefined
 export class ReactiveEffect {
@@ -10,7 +12,8 @@ export class ReactiveEffect {
     // 这里写了public，fn也挂载到类上了
     // scheduler可以实现组件的异步更新
     constructor(public fn,public scheduler?) {
-
+        // 让effectScope收集该effect
+        recordEffectScope(this)   
     }
     // 执行effect，该effect收集响应式数据依赖，对应的响应式数据收集该effect
     run() {

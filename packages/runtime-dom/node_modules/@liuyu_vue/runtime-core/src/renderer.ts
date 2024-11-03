@@ -145,7 +145,7 @@ export function createRender(renderOptions) {
             patchElement(n1, n2)
         }
     }
-    function processFragment(n1, n2, container) {
+    function processFragment(n1, n2, container, parentComponent) {
         if (n1 == null) {
             mountElement(n2, container)
         } else {
@@ -204,7 +204,7 @@ export function createRender(renderOptions) {
 
     // n1为老节点，n2为新节点。n2可能是文本字符串
     // 将n1和n2  diff比对，然后将修改后的vnode挂载到container上
-    function patch(n1, n2, container, anchor = null) {
+    function patch(n1, n2, container, anchor = null, parentComponent = null) {
         if (n1 === n2) return
         // 如果n1和n2不是一个东西，直接替换
         if (n1 && !isSameVnode(n1, n2)) {
@@ -220,14 +220,23 @@ export function createRender(renderOptions) {
                 processText(n1, n2, container)
                 break
             case Fragment: // <></>标签
-                processFragment(n1, n2, container)
+                processFragment(n1, n2, container, parentComponent)
                 break
             default:
                 // 是其他元素
                 if (shapeFlag & ShapeFlags.ELEMENT) {
-                    processElement(n1, n2, container, anchor)
+                    processElement(n1, n2, container, anchor, parentComponent)
                 } else if (shapeFlag & ShapeFlags.COMPONENT) {
-                    processComponent(n1, n2, container, anchor)
+                    processComponent(n1, n2, container, anchor, parentComponent)
+                } else if (shapeFlag & ShapeFlags.TELEPORT) {
+                    type.process(n1, n2, container, anchor, {
+                        mountChildren,
+                        patchChildren,
+                        move(vnode, container, anchor) {
+                            // 组件对应的DOM在vnode.component.subTree.el上，不然在vnode.el上
+                            hostInsert(vnode.componenet ? vnode.component.subTree.el : vnode.el)
+                        }
+                    })
                 }
         }
     }

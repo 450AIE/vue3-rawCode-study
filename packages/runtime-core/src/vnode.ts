@@ -1,5 +1,6 @@
 import { ShapeFlags } from "@my_vue/shared/src";
 import { isArray, isObject, isString } from "lodash";
+import { isTeleport } from "./components/Teleport";
 
 // 虚拟节点有  组件  元素  文本 等等
 export function createVnode(type, props, children = null, patchFlag = 0) {
@@ -17,7 +18,9 @@ export function createVnode(type, props, children = null, patchFlag = 0) {
      */
     // 如果传递的是字符串，那么就是传递的‘DIV’之类的
     // 如果传递的是type对象，那么就是传递的组件，type为组件的所有属性
-    let shapeFlag = isString(type) ? ShapeFlags.ELEMENT : isObject(type) ? ShapeFlags.STATEFUL_COMPONENT : 0
+    let shapeFlag = isString(type) ? ShapeFlags.ELEMENT :
+        isTeleport(type) ? ShapeFlags.TELEPORT :
+            isObject(type) ? ShapeFlags.STATEFUL_COMPONENT : 0
     // vnode便于跨平台，直接对比真实DOM性能差，因为真实DOM的属性太多
     const vnode = {
         type,
@@ -33,7 +36,7 @@ export function createVnode(type, props, children = null, patchFlag = 0) {
         // 优化性能。0为无，1为有
         patchFlag,
         // 存储动态节点的数组
-        dynamicChildren:null,
+        dynamicChildren: null,
     }
     // 如果有孩子的话，判断孩子的类型
     if (children) {
