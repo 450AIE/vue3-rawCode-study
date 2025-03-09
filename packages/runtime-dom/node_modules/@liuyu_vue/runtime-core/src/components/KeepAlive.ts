@@ -7,10 +7,10 @@ import { isVnode } from "../vnode"
 export const KeepAliveImpl = {
     __isKeepAlive: true,
     // 这些这里没有实现
-    props:{
-        include:{}, //缓存的组件名
-        exclude:{},  // 不缓存的组件名
-        max:{}      // max最大个数，采用LRU策略，删除缓存后重置被删除的组件的状态
+    props: {
+        include: {}, //缓存的组件名
+        exclude: {},  // 不缓存的组件名
+        max: {}      // max最大个数，采用LRU策略，删除缓存后重置被删除的组件的状态
     }
     setup(props, slots) {
         // 缓存的key
@@ -23,16 +23,17 @@ export const KeepAliveImpl = {
         const storageContainer = createElement('div')
         // 在patch里的unmount时，我们就阻止unmount，取而代之
         // 将这个组件vnode放在storageContainer缓存里准备取出来用
-        instance.ctx.deactivate = function(vnode){
-            move(vnode,storageContainer)
+        instance.ctx.deactivate = function (vnode) {
+            move(vnode, storageContainer)
             // 这里还有deactivate的生命周期
         }
-        instance.ctx.activate = function(vnode,container,anchor){
-            move(vnode,container,anchor)
+        instance.ctx.activate = function (vnode, container, anchor) {
+            move(vnode, container, anchor)
             // 这里还有activate的生命周期
-
         }
+        // 表示当前活跃的组件
         let pendingCacheKey = null
+        // 更新当前活跃组件的subTree虚拟节点
         function cacheSubTree() {
             if (pendingCacheKey) {
                 cache.set(pendingCacheKey, instance.subTree)
@@ -40,7 +41,6 @@ export const KeepAliveImpl = {
         }
         onMounted(cacheSubTree)
         onUpdated(cacheSubTree)
-
         return () => {
             let vnode = slots.default()
             // 只缓存组件
